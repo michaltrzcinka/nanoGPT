@@ -9,7 +9,7 @@ block_size = 256
 max_iters = 5_000
 eval_interval = 500
 learning_rate = 3e-4
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
+device = 'mps'
 eval_iters = 200
 n_embd = 384
 n_head = 6
@@ -161,12 +161,12 @@ class BigramLanguageModel(nn.Module):
     def forward(self, idx, targets=None):
         B, T = idx.shape
         # idx and targets are both (B,T) tensor of integers
-        tok_emb = self.token_embedding_table(idx)  # (B,T,C)
+        tok_emb = self.token_embedding_table(idx.to(device))  # (B,T,C)
         pos_emb = self.position_embedding_table(torch.arange(T, device=device))  # (T,C)
         x = tok_emb + pos_emb  # (B,T,C)
         x = self.blocks(x)  # (B,T,C)
         x = self.ln_f(x)  # (B,T,C)
-        logits = self.lm_head(x)  # (B,T,vocab_size)
+        logits = self.lm_head(x).to(device)  # (B,T,vocab_size)
 
         if targets is None:
             loss = None
@@ -174,7 +174,7 @@ class BigramLanguageModel(nn.Module):
             B, T, C = logits.shape
             logits = logits.view(B * T, C)
             targets = targets.view(B * T)
-            loss = F.cross_entropy(logits, targets)
+            loss = F.cross_entropy(logits, targets.to(device))
 
         return logits, loss
 
